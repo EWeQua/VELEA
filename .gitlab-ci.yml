@@ -1,10 +1,16 @@
-image: conda/miniconda3
-
-before_script:
-  - conda --version  # For debugging
-  - ls
-  - conda env create -f environment-dev-clean.yml
-  - conda activate velea
+default:
+  image: continuumio/miniconda3
+  cache: # See https://stackoverflow.com/a/77012498 for caching implementation
+    key:
+      files:
+        - environment-dev.yml
+    paths:
+      - .env/
+  before_script:
+    - conda env create -f environment-dev.yml -p .env/ || true
+    - conda init bash # See https://stackoverflow.com/a/58804535
+    - source ~/.bashrc
+    - conda activate /builds/nema492/velea/.env
 
 lint:
   script:
