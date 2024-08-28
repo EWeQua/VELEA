@@ -1,0 +1,15 @@
+image: conda/miniconda3
+
+before_script:
+  - conda --version  # For debugging
+  - ls
+  - conda env create -f environment-dev-clean.yml
+  - conda activate velea
+
+lint:
+  script:
+    - black --check .
+
+test:
+  script:
+    - pytest .
