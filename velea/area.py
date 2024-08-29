@@ -1,3 +1,5 @@
+import warnings
+
 from geopandas import GeoDataFrame
 
 
@@ -24,6 +26,11 @@ class Area:
             geometry = filtered_gdf.geometry
 
         if self.columns_to_keep:
+            if self.buffer_args is not None:
+                warnings.warn("columns_to_keep and buffer_args cannot be set at the same time. "
+                              "The parameter columns_to_keep is ignored")
+                return GeoDataFrame(geometry=geometry)
+
             return GeoDataFrame(
                 data=filtered_gdf[self.columns_to_keep], geometry=geometry
             )
