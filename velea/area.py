@@ -27,8 +27,10 @@ class Area:
 
         if self.columns_to_keep:
             if self.buffer_args is not None:
-                warnings.warn("columns_to_keep and buffer_args cannot be set at the same time. "
-                              "The parameter columns_to_keep is ignored")
+                warnings.warn(
+                    "columns_to_keep and buffer_args cannot be set at the same time. "
+                    "The parameter columns_to_keep is ignored"
+                )
                 return GeoDataFrame(geometry=geometry)
 
             return GeoDataFrame(
