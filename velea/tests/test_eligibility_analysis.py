@@ -36,25 +36,6 @@ def unsuitable_areas(request):
     return Area(GeoDataFrame(geometry=s1), "unsuitable_areas")
 
 
-@pytest.fixture
-def dfs(request):
-    s1 = GeoSeries(
-        [
-            Polygon([(0, 0), (2, 0), (2, 2), (0, 2)]),
-            Polygon([(2, 2), (4, 2), (4, 4), (2, 4)]),
-        ]
-    )
-    s2 = GeoSeries(
-        [
-            Polygon([(1, 1), (3, 1), (3, 3), (1, 3)]),
-            Polygon([(3, 3), (5, 3), (5, 5), (3, 5)]),
-        ]
-    )
-    df1 = GeoDataFrame({"col1": [1, 2], "geometry": s1})
-    df2 = GeoDataFrame({"col2": [1, 2], "geometry": s2})
-    return df1, df2
-
-
 def test_empty_suitable(base_area):
     base = base_area
     analysis = EligibilityAnalysis(

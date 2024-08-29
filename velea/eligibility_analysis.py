@@ -48,37 +48,39 @@ class EligibilityAnalysis:
         polygon_restricted_gdf = self.ensure_polygons(self.restricted_gdf)
 
         print(f"Start overlaying excluded areas: {datetime.now()}\n")
-        if not polygon_exclude_gdf.empty:
-            all_eligible_areas_gdf = polygon_include_gdf.overlay(
-                polygon_exclude_gdf, how="difference"
-            )
-            polygon_all_eligible_areas_gdf = self.ensure_polygons(
-                all_eligible_areas_gdf
-            )
-        else:
-            polygon_all_eligible_areas_gdf = polygon_include_gdf
+        polygon_all_eligible_areas_gdf = self.overlay_non_empty(
+            polygon_include_gdf, polygon_exclude_gdf, how="difference"
+        )
 
         print(f"Start overlaying restricted areas: {datetime.now()}\n")
-        if not polygon_restricted_gdf.empty:
-            eligible_gdf = polygon_all_eligible_areas_gdf.overlay(
-                polygon_restricted_gdf, how="difference"
-            )
-            polygon_eligible_gdf = self.ensure_polygons(eligible_gdf)
-        else:
-            polygon_eligible_gdf = polygon_all_eligible_areas_gdf
+        polygon_eligible_gdf = self.overlay_non_empty(
+            polygon_all_eligible_areas_gdf, polygon_restricted_gdf, how="difference"
+        )
 
-        if not polygon_eligible_gdf.empty:
-            restricted_areas_gdf = polygon_all_eligible_areas_gdf.overlay(
-                polygon_eligible_gdf, how="difference"
-            )
-            polygon_restricted_areas_gdf = self.ensure_polygons(restricted_areas_gdf)
-        else:
-            polygon_restricted_areas_gdf = polygon_all_eligible_areas_gdf
+        polygon_restricted_areas_gdf = self.overlay_non_empty(
+            polygon_all_eligible_areas_gdf, polygon_eligible_gdf, how="difference"
+        )
 
         return (
             self.remove_slivers(polygon_eligible_gdf),
             self.remove_slivers(polygon_restricted_areas_gdf),
         )
+
+    def overlay_non_empty(
+        self,
+        df1: GeoDataFrame,
+        df2: GeoDataFrame,
+        how: str,
+        keep_geom_type: bool = True,
+        make_valid: bool = True,
+    ) -> GeoDataFrame:
+        if df2.empty:
+            return df1
+        else:
+            overlay = df1.overlay(
+                df2, how=how, keep_geom_type=keep_geom_type, make_valid=make_valid
+            )
+            return self.ensure_polygons(overlay)
 
     def concat_areas(self, list_of_areas: list[Area]) -> GeoDataFrame:
         gdfs = [area.prepare() for area in list_of_areas]
