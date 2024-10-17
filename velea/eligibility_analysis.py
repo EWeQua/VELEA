@@ -1,7 +1,9 @@
+import warnings
 from datetime import datetime
 
 import pandas as pd
 from geopandas import GeoDataFrame
+import geopandas as gpd
 
 from velea import Area
 
@@ -9,7 +11,7 @@ from velea import Area
 class EligibilityAnalysis:
     def __init__(
         self,
-        base_area: Area,
+        base_area: dict,
         included_areas=None,
         excluded_areas=None,
         restricted_areas=None,
@@ -35,12 +37,12 @@ class EligibilityAnalysis:
         self.sliver_threshold = sliver_threshold
 
     def execute(self) -> tuple[GeoDataFrame, GeoDataFrame]:
-        self.base_area_gdf = self.base_area.prepare()
+        self.base_area_gdf = self.read_source(self.base_area)
 
         print(f"Start preparing: {datetime.now()}\n")
-        self.exclude_gdf = self.concat_areas(self.excludes)
-        self.include_gdf = self.concat_areas(self.includes)
-        self.restricted_gdf = self.concat_areas(self.restricted)
+        self.exclude_gdf = self.prepare_areas(self.excludes)
+        self.include_gdf = self.prepare_areas(self.includes)
+        self.restricted_gdf = self.prepare_areas(self.restricted)
 
         print(f"Start ensuring poylgons: {datetime.now()}\n")
         polygon_exclude_gdf = self.ensure_polygons(self.exclude_gdf)
@@ -82,12 +84,60 @@ class EligibilityAnalysis:
             )
             return self.ensure_polygons(overlay)
 
-    def concat_areas(self, list_of_areas: list[Area]) -> GeoDataFrame:
-        gdfs = [area.prepare() for area in list_of_areas]
+    def prepare_areas(self, list_of_areas: list[dict]) -> GeoDataFrame:
+        gdfs = []
+        for area_dict in list_of_areas:
+
+            buffer = None
+            if "buffer" in area_dict:
+                buffer = area_dict["buffer"]
+
+            columns_to_keep = None
+            if "columns_to_keep" in area_dict:
+                columns_to_keep = area_dict["columns_to_keep"]
+
+            gdf = self.read_source(area_dict)
+
+            if buffer:
+                unary_union = gdf.buffer(buffer).unary_union
+                geometry = [unary_union]
+            else:
+                geometry = gdf.geometry
+
+            if columns_to_keep:
+                if buffer:
+                    warnings.warn(
+                        "columns_to_keep and buffer cannot be set at the same time. "
+                        "The parameter columns_to_keep is ignored"
+                    )
+                    gdf = GeoDataFrame(geometry=geometry)
+                else:
+                    gdf = GeoDataFrame(data=gdf[columns_to_keep], geometry=geometry)
+            else:
+                gdf = GeoDataFrame(geometry=geometry)
+            gdfs.append(gdf)
+
         if not gdfs:
             return GeoDataFrame()
 
         return GeoDataFrame(pd.concat(gdfs, ignore_index=True))
+
+    def read_source(self, area_dict: dict) -> GeoDataFrame:
+        assert "source" in area_dict
+        source = area_dict["source"]
+
+        where = None
+        if "where" in area_dict:
+            where = area_dict["where"]
+
+        if isinstance(source, GeoDataFrame):
+            if where:
+                warnings.warn(
+                    "'where' filter is ignored when passing a GeoDataFrame as 'source'."
+                )
+            return source
+        else:
+            return gpd.read_file(source, where=where)
 
     def ensure_polygons(self, gdf: GeoDataFrame) -> GeoDataFrame:
         if gdf.empty:
