@@ -36,6 +36,16 @@ def unsuitable_areas(request):
     return Area(GeoDataFrame(geometry=s1), "unsuitable_areas")
 
 
+@pytest.fixture
+def restricted_areas(request):
+    s1 = GeoSeries(
+        [
+            Polygon([(2, 0), (4, 0), (4, 2), (2, 2)]),
+        ]
+    )
+    return Area(GeoDataFrame(geometry=s1), "restricted_areas")
+
+
 def test_empty_suitable(base_area):
     base = base_area
     analysis = EligibilityAnalysis(
@@ -61,6 +71,35 @@ def test_sum_suitable(base_area, suitable_areas):
     )
     eligible_areas, restricted_areas = analysis.execute()
     assert eligible_areas.area.sum() == 8
+
+
+def test_empty_restricted(base_area, suitable_areas):
+    base = base_area
+    suitable = suitable_areas
+    analysis = EligibilityAnalysis(
+        base_area=base,
+        included_areas=[suitable],
+        excluded_areas=None,
+        restricted_areas=None,
+        sliver_threshold=0,
+    )
+    eligible_areas, restricted_areas = analysis.execute()
+    assert restricted_areas.area.sum() == 0
+
+
+def test_empty_restricted_with_excluded(base_area, suitable_areas, unsuitable_areas):
+    base = base_area
+    suitable = suitable_areas
+    unsuitable = unsuitable_areas
+    analysis = EligibilityAnalysis(
+        base_area=base,
+        included_areas=[suitable],
+        excluded_areas=[unsuitable],
+        restricted_areas=[],
+        sliver_threshold=0,
+    )
+    eligible_areas, restricted_areas = analysis.execute()
+    assert restricted_areas.area.sum() == 0
 
 
 def test_sum_buffer_suitable(base_area, suitable_areas):
@@ -136,3 +175,20 @@ def test_sum_difference_buffer_restricted(base_area, suitable_areas, unsuitable_
     eligible_areas, restricted_areas = analysis.execute()
     assert eligible_areas.area.sum() == 0
     assert restricted_areas.area.sum() == 8
+
+
+def test_linstring_overlap_is_empty(base_area, suitable_areas, restricted_areas):
+    base = base_area
+    suitable = suitable_areas
+    restricted = restricted_areas
+    analysis = EligibilityAnalysis(
+        base_area=base,
+        included_areas=[suitable],
+        excluded_areas=[],
+        restricted_areas=[restricted],
+        sliver_threshold=0,
+    )
+    eligible_areas, restricted_areas = analysis.execute()
+    assert eligible_areas.area.sum() == 8
+    assert restricted_areas.area.sum() == 0
+    assert restricted_areas.empty
