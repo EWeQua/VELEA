@@ -2,7 +2,7 @@ import pytest
 from geopandas import GeoSeries, GeoDataFrame
 from shapely.geometry import Polygon
 
-from velea import Area, EligibilityAnalysis
+from velea import EligibilityAnalysis
 
 
 @pytest.fixture
@@ -12,7 +12,7 @@ def base_area(request):
             Polygon([(0, 0), (4, 0), (4, 4), (0, 4)]),
         ]
     )
-    return Area(GeoDataFrame(geometry=s1), "base_area")
+    return {"source": GeoDataFrame(geometry=s1)}
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def suitable_areas(request):
             Polygon([(2, 2), (4, 2), (4, 4), (2, 4)]),
         ]
     )
-    return Area(GeoDataFrame({"col1": [1, 2], "geometry": s1}), "suitable_areas")
+    return {"source": GeoDataFrame({"col1": [1, 2], "geometry": s1})}
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ def unsuitable_areas(request):
             Polygon([(1, 1), (3, 1), (3, 3), (1, 3)]),
         ]
     )
-    return Area(GeoDataFrame(geometry=s1), "unsuitable_areas")
+    return {"source": GeoDataFrame(geometry=s1)}
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ def restricted_areas(request):
             Polygon([(2, 0), (4, 0), (4, 2), (2, 2)]),
         ]
     )
-    return Area(GeoDataFrame(geometry=s1), "restricted_areas")
+    return {"source": GeoDataFrame(geometry=s1)}
 
 
 def test_empty_suitable(base_area):
@@ -105,7 +105,7 @@ def test_empty_restricted_with_excluded(base_area, suitable_areas, unsuitable_ar
 def test_sum_buffer_suitable(base_area, suitable_areas):
     base = base_area
     suitable = suitable_areas
-    suitable.buffer_args = {
+    suitable["buffer_args"] = {
         "distance": 1,
         "cap_style": "square",
         "join_style": "mitre",

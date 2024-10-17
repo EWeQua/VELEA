@@ -5,8 +5,6 @@ import pandas as pd
 from geopandas import GeoDataFrame
 import geopandas as gpd
 
-from velea import Area
-
 
 class EligibilityAnalysis:
     def __init__(
@@ -92,6 +90,10 @@ class EligibilityAnalysis:
             if "buffer" in area_dict:
                 buffer = area_dict["buffer"]
 
+            buffer_args = None
+            if "buffer_args" in area_dict:
+                buffer_args = area_dict["buffer_args"]
+
             columns_to_keep = None
             if "columns_to_keep" in area_dict:
                 columns_to_keep = area_dict["columns_to_keep"]
@@ -100,6 +102,9 @@ class EligibilityAnalysis:
 
             if buffer:
                 unary_union = gdf.buffer(buffer).unary_union
+                geometry = [unary_union]
+            elif buffer_args:
+                unary_union = gdf.buffer(**buffer_args).unary_union
                 geometry = [unary_union]
             else:
                 geometry = gdf.geometry
