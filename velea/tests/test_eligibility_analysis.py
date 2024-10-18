@@ -1,5 +1,6 @@
 import pytest
 from geopandas import GeoSeries, GeoDataFrame
+from pyproj import CRS
 from shapely.geometry import Polygon
 
 from velea import EligibilityAnalysis
@@ -9,10 +10,17 @@ from velea import EligibilityAnalysis
 def base_area(request):
     s1 = GeoSeries(
         [
-            Polygon([(0, 0), (4, 0), (4, 4), (0, 4)]),
+            Polygon(
+                [
+                    (0, 0),
+                    (4, 0),
+                    (4, 4),
+                    (0, 4),
+                ]
+            ),
         ]
     )
-    return {"source": GeoDataFrame(geometry=s1)}
+    return {"source": GeoDataFrame(geometry=s1, crs=None)}
 
 
 @pytest.fixture
@@ -23,7 +31,7 @@ def suitable_areas(request):
             Polygon([(2, 2), (4, 2), (4, 4), (2, 4)]),
         ]
     )
-    return {"source": GeoDataFrame({"col1": [1, 2], "geometry": s1})}
+    return {"source": GeoDataFrame({"col1": [1, 2], "geometry": s1}, crs=None)}
 
 
 @pytest.fixture
@@ -33,7 +41,7 @@ def unsuitable_areas(request):
             Polygon([(1, 1), (3, 1), (3, 3), (1, 3)]),
         ]
     )
-    return {"source": GeoDataFrame(geometry=s1)}
+    return {"source": GeoDataFrame(geometry=s1, crs=None)}
 
 
 @pytest.fixture
@@ -43,7 +51,7 @@ def restricted_areas(request):
             Polygon([(2, 0), (4, 0), (4, 2), (2, 2)]),
         ]
     )
-    return {"source": GeoDataFrame(geometry=s1)}
+    return {"source": GeoDataFrame(geometry=s1, crs=None)}
 
 
 def test_empty_suitable(base_area):
@@ -140,7 +148,7 @@ def test_sum_difference_buffer(base_area, suitable_areas, unsuitable_areas):
     base = base_area
     suitable = suitable_areas
     unsuitable = unsuitable_areas
-    unsuitable.buffer_args = {
+    unsuitable["buffer_args"] = {
         "distance": 1,
         "cap_style": "square",
         "join_style": "mitre",
@@ -160,7 +168,7 @@ def test_sum_difference_buffer_restricted(base_area, suitable_areas, unsuitable_
     base = base_area
     suitable = suitable_areas
     restricted = unsuitable_areas
-    restricted.buffer_args = {
+    restricted["buffer_args"] = {
         "distance": 1,
         "cap_style": "square",
         "join_style": "mitre",

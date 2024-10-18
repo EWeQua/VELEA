@@ -4,6 +4,8 @@ from datetime import datetime
 import pandas as pd
 from geopandas import GeoDataFrame
 import geopandas as gpd
+from pandas import Series
+from pyproj import CRS
 
 
 class EligibilityAnalysis:
@@ -14,6 +16,7 @@ class EligibilityAnalysis:
         excluded_areas=None,
         restricted_areas=None,
         sliver_threshold=100,
+        crs: CRS = None,
     ):
         self.base_area = base_area
         self.base_area_gdf = None
@@ -33,6 +36,7 @@ class EligibilityAnalysis:
         self.restricted_gdf = None
 
         self.sliver_threshold = sliver_threshold
+        self.crs = crs
 
     def execute(self) -> tuple[GeoDataFrame, GeoDataFrame]:
         self.base_area_gdf = self.read_source(self.base_area)
@@ -99,33 +103,59 @@ class EligibilityAnalysis:
                 columns_to_keep = area_dict["columns_to_keep"]
 
             gdf = self.read_source(area_dict)
-
-            if buffer:
-                unary_union = gdf.buffer(buffer).unary_union
-                geometry = [unary_union]
-            elif buffer_args:
-                unary_union = gdf.buffer(**buffer_args).unary_union
-                geometry = [unary_union]
-            else:
-                geometry = gdf.geometry
-
-            if columns_to_keep:
-                if buffer:
-                    warnings.warn(
-                        "columns_to_keep and buffer cannot be set at the same time. "
-                        "The parameter columns_to_keep is ignored"
-                    )
-                    gdf = GeoDataFrame(geometry=geometry)
-                else:
-                    gdf = GeoDataFrame(data=gdf[columns_to_keep], geometry=geometry)
-            else:
-                gdf = GeoDataFrame(geometry=geometry)
+            geometry = self.apply_buffer(gdf, buffer, buffer_args)
+            gdf = self.handle_columns_to_keep(
+                gdf, geometry, buffer, buffer_args, columns_to_keep
+            )
             gdfs.append(gdf)
 
         if not gdfs:
-            return GeoDataFrame()
+            return self.ensure_crs(GeoDataFrame())
 
-        return GeoDataFrame(pd.concat(gdfs, ignore_index=True))
+        return self.ensure_crs(GeoDataFrame(pd.concat(gdfs, ignore_index=True)))
+
+    def handle_columns_to_keep(
+        self,
+        gdf: GeoDataFrame,
+        geometry: list | Series,
+        buffer: dict,
+        buffer_args: dict,
+        columns_to_keep: list,
+    ):
+        if not columns_to_keep:
+            # If there are no columns to keep, return a new geometry-only GeoDataFrame
+            return self.ensure_crs(GeoDataFrame(geometry=geometry))
+
+        if buffer or buffer_args:
+            # If the geometries were buffered and unioned, columns_to_keep are lost, therefore return a new
+            # geometry-only GeoDataFrame
+            warnings.warn(
+                "columns_to_keep and buffer or buffer_args cannot be set at the same time. "
+                "The parameter columns_to_keep is ignored"
+            )
+            return self.ensure_crs(GeoDataFrame(geometry=geometry))
+        else:
+            return self.ensure_crs(
+                GeoDataFrame(data=gdf[columns_to_keep], geometry=geometry)
+            )
+
+    def apply_buffer(
+        self, gdf: GeoDataFrame, buffer: dict, buffer_args: dict
+    ) -> list | Series:
+        if buffer and buffer_args:
+            warnings.warn(
+                "buffer and buffer_args cannot be set at the same time. "
+                "The parameter buffer is ignored"
+            )
+        if buffer:
+            unary_union = gdf.buffer(buffer).unary_union
+            geometry = [unary_union]
+        elif buffer_args:
+            unary_union = gdf.buffer(**buffer_args).unary_union
+            geometry = [unary_union]
+        else:
+            geometry = gdf.geometry
+        return geometry
 
     def read_source(self, area_dict: dict) -> GeoDataFrame:
         assert "source" in area_dict
@@ -140,9 +170,20 @@ class EligibilityAnalysis:
                 warnings.warn(
                     "'where' filter is ignored when passing a GeoDataFrame as 'source'."
                 )
-            return source
+
         else:
-            return gpd.read_file(source, where=where)
+            source = gpd.read_file(source, where=where)
+
+        return self.ensure_crs(source)
+
+    def ensure_crs(self, gdf: GeoDataFrame) -> GeoDataFrame:
+        if gdf.empty or not self.crs:
+            return gdf
+
+        if gdf.crs:
+            return gdf.to_crs(self.crs)
+        else:
+            return gdf.set_crs(self.crs)
 
     def ensure_polygons(self, gdf: GeoDataFrame) -> GeoDataFrame:
         if gdf.empty:
