@@ -4,7 +4,6 @@ from datetime import datetime
 import pandas as pd
 from geopandas import GeoDataFrame, GeoSeries
 import geopandas as gpd
-from pandas import Series
 from pyproj import CRS
 
 
@@ -15,7 +14,7 @@ class EligibilityAnalysis:
         included_areas=None,
         excluded_areas=None,
         restricted_areas=None,
-        sliver_threshold=100,
+        sliver_threshold=None,
         crs: CRS = None,
     ):
         self.base_area = base_area
@@ -167,6 +166,6 @@ class EligibilityAnalysis:
             return self.ensure_polygons(overlay)
 
     def remove_slivers(self, gdf: GeoDataFrame) -> GeoDataFrame:
-        if gdf.empty:
+        if gdf.empty or not self.sliver_threshold:
             return gdf
         return gdf[gdf.area > self.sliver_threshold]
