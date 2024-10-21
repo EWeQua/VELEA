@@ -137,7 +137,7 @@ class EligibilityAnalysis:
             unary_union = gdf.buffer(**buffer_args).unary_union
         else:
             raise
-        return GeoSeries([unary_union])
+        return self.ensure_crs(GeoSeries([unary_union]))
 
     def handle_columns_to_keep(
         self,
@@ -164,7 +164,7 @@ class EligibilityAnalysis:
                 GeoDataFrame(data=gdf[columns_to_keep], geometry=geometry)
             )
 
-    def ensure_crs(self, gdf: GeoDataFrame) -> GeoDataFrame:
+    def ensure_crs(self, gdf: GeoDataFrame | GeoSeries) -> GeoDataFrame | GeoSeries:
         if gdf.empty or not self.crs:
             return gdf
 
