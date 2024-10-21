@@ -68,6 +68,7 @@ class EligibilityAnalysis:
     def prepare_areas(self, list_of_areas: list[dict]) -> GeoDataFrame:
         gdfs = []
         for area_dict in list_of_areas:
+            gdf = self.read_source(area_dict)
 
             buffer = None
             if "buffer" in area_dict:
@@ -77,18 +78,16 @@ class EligibilityAnalysis:
             if "buffer_args" in area_dict:
                 buffer_args = area_dict["buffer_args"]
 
-            columns_to_keep = None
-            if "columns_to_keep" in area_dict:
-                columns_to_keep = area_dict["columns_to_keep"]
-
-            gdf = self.read_source(area_dict)
-            geometry = self.apply_buffer(gdf, buffer, buffer_args)
-            geometry = geometry.clip(self.base_area_gdf)
-            geometry = self.ensure_polygons(geometry)
-            gdf = self.handle_columns_to_keep(
-                gdf, geometry, buffer, buffer_args, columns_to_keep
-            )
-            gdfs.append(gdf)
+            if buffer or buffer_args:
+                warnings.warn(
+                    f"Applying buffer to {area_dict['source']}, data columns are dropped"
+                )
+                gdf = GeoDataFrame(
+                    geometry=self.apply_buffer(gdf, buffer, buffer_args), crs=self.crs
+                )
+            clipped_gdf = gdf.clip(self.base_area_gdf)
+            clipped_polygon_gdf = self.ensure_polygons(clipped_gdf)
+            gdfs.append(clipped_polygon_gdf)
 
         if not gdfs:
             return self.ensure_crs(GeoDataFrame())
@@ -132,32 +131,7 @@ class EligibilityAnalysis:
             unary_union = gdf.buffer(**buffer_args).unary_union
         else:
             raise
-        return self.ensure_crs(GeoSeries([unary_union]))
-
-    def handle_columns_to_keep(
-        self,
-        gdf: GeoDataFrame,
-        geometry: list | Series,
-        buffer: dict,
-        buffer_args: dict,
-        columns_to_keep: list,
-    ):
-        if not columns_to_keep:
-            # If there are no columns to keep, return a new geometry-only GeoDataFrame
-            return self.ensure_crs(GeoDataFrame(geometry=geometry))
-
-        if buffer or buffer_args:
-            # If the geometries were buffered and unioned, columns_to_keep are lost, therefore return a new
-            # geometry-only GeoDataFrame
-            warnings.warn(
-                "columns_to_keep and buffer or buffer_args cannot be set at the same time. "
-                "The parameter columns_to_keep is ignored"
-            )
-            return self.ensure_crs(GeoDataFrame(geometry=geometry))
-        else:
-            return self.ensure_crs(
-                GeoDataFrame(data=gdf[columns_to_keep], geometry=geometry)
-            )
+        return GeoSeries([unary_union], crs=self.crs)
 
     def ensure_crs(self, gdf: GeoDataFrame | GeoSeries) -> GeoDataFrame | GeoSeries:
         if gdf.empty or not self.crs:
