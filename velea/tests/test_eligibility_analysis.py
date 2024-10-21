@@ -24,6 +24,23 @@ def base_area(request):
 
 
 @pytest.fixture
+def large_base_area(request):
+    s1 = GeoSeries(
+        [
+            Polygon(
+                [
+                    (-1, -1),
+                    (5, -1),
+                    (5, 5),
+                    (-1, 5),
+                ]
+            ),
+        ]
+    )
+    return {"source": GeoDataFrame(geometry=s1, crs=None)}
+
+
+@pytest.fixture
 def suitable_areas(request):
     s1 = GeoSeries(
         [
@@ -110,8 +127,8 @@ def test_empty_restricted_with_excluded(base_area, suitable_areas, unsuitable_ar
     assert restricted_areas.area.sum() == 0
 
 
-def test_sum_buffer_suitable(base_area, suitable_areas):
-    base = base_area
+def test_sum_buffer_suitable(large_base_area, suitable_areas):
+    base = large_base_area
     suitable = suitable_areas
     suitable["buffer_args"] = {
         "distance": 1,
@@ -127,6 +144,25 @@ def test_sum_buffer_suitable(base_area, suitable_areas):
     )
     eligible_areas, restricted_areas = analysis.execute()
     assert eligible_areas.area.sum() == 28
+
+
+def test_clip_buffer_suitable(base_area, suitable_areas):
+    base = base_area
+    suitable = suitable_areas
+    suitable["buffer_args"] = {
+        "distance": 1,
+        "cap_style": "square",
+        "join_style": "mitre",
+    }
+    analysis = EligibilityAnalysis(
+        base_area=base,
+        included_areas=[suitable],
+        excluded_areas=[],
+        restricted_areas=[],
+        sliver_threshold=0,
+    )
+    eligible_areas, restricted_areas = analysis.execute()
+    assert eligible_areas.area.sum() == 14
 
 
 def test_sum(base_area, suitable_areas, unsuitable_areas):

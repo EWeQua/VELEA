@@ -2,7 +2,7 @@ import warnings
 from datetime import datetime
 
 import pandas as pd
-from geopandas import GeoDataFrame
+from geopandas import GeoDataFrame, GeoSeries
 import geopandas as gpd
 from pandas import Series
 from pyproj import CRS
@@ -70,22 +70,6 @@ class EligibilityAnalysis:
             self.remove_slivers(polygon_restricted_areas_gdf),
         )
 
-    def overlay_non_empty(
-        self,
-        df1: GeoDataFrame,
-        df2: GeoDataFrame,
-        how: str,
-        keep_geom_type: bool = True,
-        make_valid: bool = True,
-    ) -> GeoDataFrame:
-        if df2.empty:
-            return df1
-        else:
-            overlay = df1.overlay(
-                df2, how=how, keep_geom_type=keep_geom_type, make_valid=make_valid
-            )
-            return self.ensure_polygons(overlay)
-
     def prepare_areas(self, list_of_areas: list[dict]) -> GeoDataFrame:
         gdfs = []
         for area_dict in list_of_areas:
@@ -103,7 +87,9 @@ class EligibilityAnalysis:
                 columns_to_keep = area_dict["columns_to_keep"]
 
             gdf = self.read_source(area_dict)
-            geometry = self.apply_buffer(gdf, buffer, buffer_args)
+            geometry = self.apply_buffer(gdf, buffer, buffer_args).clip(
+                self.base_area_gdf
+            )
             gdf = self.handle_columns_to_keep(
                 gdf, geometry, buffer, buffer_args, columns_to_keep
             )
@@ -113,6 +99,45 @@ class EligibilityAnalysis:
             return self.ensure_crs(GeoDataFrame())
 
         return self.ensure_crs(GeoDataFrame(pd.concat(gdfs, ignore_index=True)))
+
+    def read_source(self, area_dict: dict) -> GeoDataFrame:
+        assert "source" in area_dict
+        source = area_dict["source"]
+
+        where = None
+        if "where" in area_dict:
+            where = area_dict["where"]
+
+        if isinstance(source, GeoDataFrame):
+            if where:
+                warnings.warn(
+                    "'where' filter is ignored when passing a GeoDataFrame as 'source'."
+                )
+
+        else:
+            source = gpd.read_file(source, where=where)
+
+        return self.ensure_crs(source)
+
+    def apply_buffer(
+        self, gdf: GeoDataFrame, buffer: dict, buffer_args: dict
+    ) -> GeoSeries:
+        # No buffer required -> return the gdf geometry unchanged
+        if not buffer and not buffer_args:
+            return gdf.geometry
+
+        if buffer and buffer_args:
+            warnings.warn(
+                "buffer and buffer_args cannot be set at the same time. "
+                "The parameter buffer is ignored"
+            )
+        if buffer:
+            unary_union = gdf.buffer(buffer).unary_union
+        elif buffer_args:
+            unary_union = gdf.buffer(**buffer_args).unary_union
+        else:
+            raise
+        return GeoSeries([unary_union])
 
     def handle_columns_to_keep(
         self,
@@ -139,43 +164,6 @@ class EligibilityAnalysis:
                 GeoDataFrame(data=gdf[columns_to_keep], geometry=geometry)
             )
 
-    def apply_buffer(
-        self, gdf: GeoDataFrame, buffer: dict, buffer_args: dict
-    ) -> list | Series:
-        if buffer and buffer_args:
-            warnings.warn(
-                "buffer and buffer_args cannot be set at the same time. "
-                "The parameter buffer is ignored"
-            )
-        if buffer:
-            unary_union = gdf.buffer(buffer).unary_union
-            geometry = [unary_union]
-        elif buffer_args:
-            unary_union = gdf.buffer(**buffer_args).unary_union
-            geometry = [unary_union]
-        else:
-            geometry = gdf.geometry
-        return geometry
-
-    def read_source(self, area_dict: dict) -> GeoDataFrame:
-        assert "source" in area_dict
-        source = area_dict["source"]
-
-        where = None
-        if "where" in area_dict:
-            where = area_dict["where"]
-
-        if isinstance(source, GeoDataFrame):
-            if where:
-                warnings.warn(
-                    "'where' filter is ignored when passing a GeoDataFrame as 'source'."
-                )
-
-        else:
-            source = gpd.read_file(source, where=where)
-
-        return self.ensure_crs(source)
-
     def ensure_crs(self, gdf: GeoDataFrame) -> GeoDataFrame:
         if gdf.empty or not self.crs:
             return gdf
@@ -190,6 +178,22 @@ class EligibilityAnalysis:
             return gdf
         exploded_gdf = gdf.explode()
         return exploded_gdf[exploded_gdf.geom_type == "Polygon"]
+
+    def overlay_non_empty(
+        self,
+        df1: GeoDataFrame,
+        df2: GeoDataFrame,
+        how: str,
+        keep_geom_type: bool = True,
+        make_valid: bool = True,
+    ) -> GeoDataFrame:
+        if df2.empty:
+            return df1
+        else:
+            overlay = df1.overlay(
+                df2, how=how, keep_geom_type=keep_geom_type, make_valid=make_valid
+            )
+            return self.ensure_polygons(overlay)
 
     def remove_slivers(self, gdf: GeoDataFrame) -> GeoDataFrame:
         if gdf.empty:
