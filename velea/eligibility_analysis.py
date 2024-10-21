@@ -46,19 +46,14 @@ class EligibilityAnalysis:
         self.include_gdf = self.prepare_areas(self.includes)
         self.restricted_gdf = self.prepare_areas(self.restricted)
 
-        print(f"Start ensuring poylgons: {datetime.now()}\n")
-        polygon_exclude_gdf = self.ensure_polygons(self.exclude_gdf)
-        polygon_include_gdf = self.ensure_polygons(self.include_gdf)
-        polygon_restricted_gdf = self.ensure_polygons(self.restricted_gdf)
-
         print(f"Start overlaying excluded areas: {datetime.now()}\n")
         polygon_all_eligible_areas_gdf = self.overlay_non_empty(
-            polygon_include_gdf, polygon_exclude_gdf, how="difference"
+            self.include_gdf, self.exclude_gdf, how="difference"
         )
 
         print(f"Start overlaying restricted areas: {datetime.now()}\n")
         polygon_eligible_gdf = self.overlay_non_empty(
-            polygon_all_eligible_areas_gdf, polygon_restricted_gdf, how="difference"
+            polygon_all_eligible_areas_gdf, self.restricted_gdf, how="difference"
         )
 
         polygon_restricted_areas_gdf = self.overlay_non_empty(
@@ -87,9 +82,9 @@ class EligibilityAnalysis:
                 columns_to_keep = area_dict["columns_to_keep"]
 
             gdf = self.read_source(area_dict)
-            geometry = self.apply_buffer(gdf, buffer, buffer_args).clip(
-                self.base_area_gdf
-            )
+            geometry = self.apply_buffer(gdf, buffer, buffer_args)
+            geometry = geometry.clip(self.base_area_gdf)
+            geometry = self.ensure_polygons(geometry)
             gdf = self.handle_columns_to_keep(
                 gdf, geometry, buffer, buffer_args, columns_to_keep
             )
@@ -173,7 +168,9 @@ class EligibilityAnalysis:
         else:
             return gdf.set_crs(self.crs)
 
-    def ensure_polygons(self, gdf: GeoDataFrame) -> GeoDataFrame:
+    def ensure_polygons(
+        self, gdf: GeoDataFrame | GeoSeries
+    ) -> GeoDataFrame | GeoSeries:
         if gdf.empty:
             return gdf
         exploded_gdf = gdf.explode()
