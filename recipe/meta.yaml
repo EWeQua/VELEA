@@ -1,0 +1,26 @@
+package:
+  name: velea
+  version: 0.1.0
+
+source:
+  path: ..
+
+build:
+  noarch: python
+  script: python -m pip install --no-deps --ignore-installed .
+
+requirements:
+  build:
+    - python
+  run:
+    - python>=3.11.9
+    - geopandas=1.0.1
+    - geopandas-base=1.0.1
+    - pandas=2.2.2
+    - shapely=2.0.6
+
+about:
+  home: https://inf-git.th-rosenheim.de/nema492/velea
+  license: MIT
+  summary: ...
+
