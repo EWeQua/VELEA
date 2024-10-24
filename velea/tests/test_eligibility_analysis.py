@@ -1,18 +1,43 @@
 import pytest
 from geopandas import GeoSeries, GeoDataFrame
+from pyproj import CRS
 from shapely.geometry import Polygon
 
-from velea import Area, EligibilityAnalysis
+from velea import EligibilityAnalysis
 
 
 @pytest.fixture
 def base_area(request):
     s1 = GeoSeries(
         [
-            Polygon([(0, 0), (4, 0), (4, 4), (0, 4)]),
+            Polygon(
+                [
+                    (0, 0),
+                    (4, 0),
+                    (4, 4),
+                    (0, 4),
+                ]
+            ),
         ]
     )
-    return Area(GeoDataFrame(geometry=s1), "base_area")
+    return {"source": GeoDataFrame(geometry=s1, crs=None)}
+
+
+@pytest.fixture
+def large_base_area(request):
+    s1 = GeoSeries(
+        [
+            Polygon(
+                [
+                    (-1, -1),
+                    (5, -1),
+                    (5, 5),
+                    (-1, 5),
+                ]
+            ),
+        ]
+    )
+    return {"source": GeoDataFrame(geometry=s1, crs=None)}
 
 
 @pytest.fixture
@@ -23,7 +48,7 @@ def suitable_areas(request):
             Polygon([(2, 2), (4, 2), (4, 4), (2, 4)]),
         ]
     )
-    return Area(GeoDataFrame({"col1": [1, 2], "geometry": s1}), "suitable_areas")
+    return {"source": GeoDataFrame({"col1": [1, 2], "geometry": s1}, crs=None)}
 
 
 @pytest.fixture
@@ -33,7 +58,7 @@ def unsuitable_areas(request):
             Polygon([(1, 1), (3, 1), (3, 3), (1, 3)]),
         ]
     )
-    return Area(GeoDataFrame(geometry=s1), "unsuitable_areas")
+    return {"source": GeoDataFrame(geometry=s1, crs=None)}
 
 
 @pytest.fixture
@@ -43,7 +68,7 @@ def restricted_areas(request):
             Polygon([(2, 0), (4, 0), (4, 2), (2, 2)]),
         ]
     )
-    return Area(GeoDataFrame(geometry=s1), "restricted_areas")
+    return {"source": GeoDataFrame(geometry=s1, crs=None)}
 
 
 def test_empty_suitable(base_area):
@@ -102,10 +127,10 @@ def test_empty_restricted_with_excluded(base_area, suitable_areas, unsuitable_ar
     assert restricted_areas.area.sum() == 0
 
 
-def test_sum_buffer_suitable(base_area, suitable_areas):
-    base = base_area
+def test_sum_buffer_suitable(large_base_area, suitable_areas):
+    base = large_base_area
     suitable = suitable_areas
-    suitable.buffer_args = {
+    suitable["buffer_args"] = {
         "distance": 1,
         "cap_style": "square",
         "join_style": "mitre",
@@ -119,6 +144,25 @@ def test_sum_buffer_suitable(base_area, suitable_areas):
     )
     eligible_areas, restricted_areas = analysis.execute()
     assert eligible_areas.area.sum() == 28
+
+
+def test_clip_buffer_suitable(base_area, suitable_areas):
+    base = base_area
+    suitable = suitable_areas
+    suitable["buffer_args"] = {
+        "distance": 1,
+        "cap_style": "square",
+        "join_style": "mitre",
+    }
+    analysis = EligibilityAnalysis(
+        base_area=base,
+        included_areas=[suitable],
+        excluded_areas=[],
+        restricted_areas=[],
+        sliver_threshold=0,
+    )
+    eligible_areas, restricted_areas = analysis.execute()
+    assert eligible_areas.area.sum() == 14
 
 
 def test_sum(base_area, suitable_areas, unsuitable_areas):
@@ -140,7 +184,7 @@ def test_sum_difference_buffer(base_area, suitable_areas, unsuitable_areas):
     base = base_area
     suitable = suitable_areas
     unsuitable = unsuitable_areas
-    unsuitable.buffer_args = {
+    unsuitable["buffer_args"] = {
         "distance": 1,
         "cap_style": "square",
         "join_style": "mitre",
@@ -160,7 +204,7 @@ def test_sum_difference_buffer_restricted(base_area, suitable_areas, unsuitable_
     base = base_area
     suitable = suitable_areas
     restricted = unsuitable_areas
-    restricted.buffer_args = {
+    restricted["buffer_args"] = {
         "distance": 1,
         "cap_style": "square",
         "join_style": "mitre",
