@@ -1,9 +1,9 @@
 import warnings
 from datetime import datetime
 
+import geopandas as gpd
 import pandas as pd
 from geopandas import GeoDataFrame, GeoSeries
-import geopandas as gpd
 from pyproj import CRS
 
 
@@ -15,7 +15,7 @@ class EligibilityAnalysis:
         excluded_areas=None,
         restricted_areas=None,
         sliver_threshold=None,
-        crs: CRS = None,
+        crs: CRS | str = None,
     ):
         self.base_area = base_area
         self.base_area_gdf = None
@@ -41,9 +41,10 @@ class EligibilityAnalysis:
         self.base_area_gdf = self.read_source(self.base_area)
 
         print(f"Start preparing: {datetime.now()}\n")
-        self.exclude_gdf = self.prepare_areas(self.excludes)
-        self.include_gdf = self.prepare_areas(self.includes)
-        self.restricted_gdf = self.prepare_areas(self.restricted)
+        self.exclude_gdf, self.include_gdf, self.restricted_gdf = [
+            self.prepare_areas(areas)
+            for areas in [self.excludes, self.includes, self.restricted]
+        ]
 
         print(f"Start overlaying excluded areas: {datetime.now()}\n")
         polygon_all_eligible_areas_gdf = self.overlay_non_empty(
