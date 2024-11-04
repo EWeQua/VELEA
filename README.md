@@ -10,9 +10,9 @@ Depending on what you are making, it can be a good idea to include screenshots o
 ## Installation
 
 To install VELEA, we recommend to use the [conda](https://docs.conda.io/en/latest/) package manager. conda can be 
-obtained by installing the [Anaconda Distribution](https://www.anaconda.com/distribution/), or
+obtained by installing the [Anaconda Distribution](https://www.anaconda.com/distribution/) or
 [miniconda](https://docs.anaconda.com/miniconda/). See the 
-[Conda installation docs](https://conda.io/docs/user-guide/install/download.html>)for more information.
+[Conda installation docs](https://conda.io/docs/user-guide/install/download.html>) for more information.
 
 ### Installing with conda
 
@@ -27,8 +27,9 @@ TODO:
     conda activate velea
 
 ## Usage
-Define the base area of your analysis as a dict with a `source` key pointing to GeoPandas-compliant geodata file or a 
-`GeoDataFrame`:
+Define the base area of your analysis as a dict with a `source` key pointing to file that can be read using 
+[`geopandas.read_file`](https://geopandas.org/en/stable/docs/reference/api/geopandas.read_file.html) or directly using a 
+[`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html):
 ```python
 base_area = {"source": "./input/RMK/base.shp"}
 ```
