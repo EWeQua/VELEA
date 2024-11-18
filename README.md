@@ -33,10 +33,10 @@ Define the base area of your analysis as a dict with a `source` key pointing to 
 ```python
 base_area = {"source": "./input/RMK/base.shp"}
 ```
-Next define areas that are eligible, eligible with restrictions and ineligible as lists of dicts in the same format. 
+Next define included areas, excluded areas and restricted areas as lists of dicts in the same format. 
 Optionally, areas can be buffered using the `buffer` key or filtered using a `where` key:
 ```python
-eligible = [
+included_areas = [
     {
         "source": "./input/RMK/include/Benachteiligte Gebiete.shp",
     },
@@ -49,36 +49,38 @@ eligible = [
         "buffer": 120,
     },
 ]
-ineligible = [
+excluded_areas = [
     {
         "source": "./input/RMK/exclude/Alle Straßen.shp", 
         "buffer": 2.5
      },
     {
         "source": "./input/RMK/exclude/Schienennetz.shp", 
-        "buffer": 20},
+        "buffer": 20
+    },
     {
         "source": "./input/RMK/exclude/Biosphaerengebiet Kernzone.shp",
         "where": "ZONE = 'Kernzone'",
     },
 ]
-eligible_with_restrictions = []
+restricted_areas = []
 ```
 Using this input, you can run an eligibility analysis, also optionally specifying the coordinate reference system (crs)
 as a `pyroj`-compliant string and a sliver threshold (the minimal size of returned areas in units of the crs). The 
 output will be two `GeoDataFrames` containing the resulting eligible areas and the resulting eligible areas with 
 restrictions.
+
 ```python
 from velea import EligibilityAnalysis
 
 eligible_areas, eligible_areas_with_restrictions = EligibilityAnalysis(
     base_area,
-    eligible,
-    ineligible,
-    eligible_with_restrictions,
+    included_areas,
+    excluded_areas,
+    restricted_areas,
     sliver_threshold=100,
     crs="EPSG:25832",
-).execute()
+).run()
 ```
 ## Authors and acknowledgment
 Show your appreciation to those who have contributed to the project.

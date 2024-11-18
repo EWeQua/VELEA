@@ -20,15 +20,10 @@ class EligibilityAnalysis:
         self.base_area = base_area
         self.base_area_gdf = None
 
-        if excluded_areas is None:
-            excluded_areas = []
-        self.excludes = excluded_areas
-        if included_areas is None:
-            included_areas = []
-        self.includes = included_areas
-        if restricted_areas is None:
-            restricted_areas = []
-        self.restricted = restricted_areas
+        self.excluded_areas, self.included_areas, self.restricted_areas = [
+            area if area is not None else []
+            for area in [excluded_areas, included_areas, restricted_areas]
+        ]
 
         self.include_gdf = None
         self.exclude_gdf = None
@@ -37,35 +32,58 @@ class EligibilityAnalysis:
         self.sliver_threshold = sliver_threshold
         self.crs = crs
 
-    def execute(self) -> tuple[GeoDataFrame, GeoDataFrame]:
+    def run(self) -> tuple[GeoDataFrame, GeoDataFrame]:
         self.base_area_gdf = self.read_source(self.base_area)
 
-        print(f"Start preparing: {datetime.now()}\n")
+        print(f"Start preprocessing: {datetime.now()}\n")
         self.exclude_gdf, self.include_gdf, self.restricted_gdf = [
-            self.prepare_areas(areas)
-            for areas in [self.excludes, self.includes, self.restricted]
+            self.preprocess(areas)
+            for areas in [
+                self.excluded_areas,
+                self.included_areas,
+                self.restricted_areas,
+            ]
         ]
 
         print(f"Start overlaying excluded areas: {datetime.now()}\n")
-        polygon_all_eligible_areas_gdf = self.overlay_non_empty(
+        all_eligible_areas = self.overlay_non_empty(
             self.include_gdf, self.exclude_gdf, how="difference"
         )
 
         print(f"Start overlaying restricted areas: {datetime.now()}\n")
-        polygon_eligible_gdf = self.overlay_non_empty(
-            polygon_all_eligible_areas_gdf, self.restricted_gdf, how="difference"
+        eligible_areas = self.overlay_non_empty(
+            all_eligible_areas, self.restricted_gdf, how="difference"
         )
 
-        polygon_restricted_areas_gdf = self.overlay_non_empty(
-            polygon_all_eligible_areas_gdf, polygon_eligible_gdf, how="difference"
+        eligible_areas_with_restrictions = self.overlay_non_empty(
+            all_eligible_areas, eligible_areas, how="difference"
         )
 
         return (
-            self.remove_slivers(polygon_eligible_gdf),
-            self.remove_slivers(polygon_restricted_areas_gdf),
+            self.remove_slivers(eligible_areas),
+            self.remove_slivers(eligible_areas_with_restrictions),
         )
 
-    def prepare_areas(self, list_of_areas: list[dict]) -> GeoDataFrame:
+    def read_source(self, area_dict: dict) -> GeoDataFrame:
+        assert "source" in area_dict
+        source = area_dict["source"]
+
+        where = None
+        if "where" in area_dict:
+            where = area_dict["where"]
+
+        if isinstance(source, GeoDataFrame):
+            if where:
+                warnings.warn(
+                    "'where' filter is ignored when passing a GeoDataFrame as 'source'."
+                )
+
+        else:
+            source = gpd.read_file(source, where=where)
+
+        return self.ensure_crs(source)
+
+    def preprocess(self, list_of_areas: list[dict]) -> GeoDataFrame:
         gdfs = []
         for area_dict in list_of_areas:
             gdf = self.read_source(area_dict)
@@ -93,25 +111,6 @@ class EligibilityAnalysis:
             return self.ensure_crs(GeoDataFrame())
 
         return self.ensure_crs(GeoDataFrame(pd.concat(gdfs, ignore_index=True)))
-
-    def read_source(self, area_dict: dict) -> GeoDataFrame:
-        assert "source" in area_dict
-        source = area_dict["source"]
-
-        where = None
-        if "where" in area_dict:
-            where = area_dict["where"]
-
-        if isinstance(source, GeoDataFrame):
-            if where:
-                warnings.warn(
-                    "'where' filter is ignored when passing a GeoDataFrame as 'source'."
-                )
-
-        else:
-            source = gpd.read_file(source, where=where)
-
-        return self.ensure_crs(source)
 
     def apply_buffer(
         self, gdf: GeoDataFrame, buffer: dict, buffer_args: dict

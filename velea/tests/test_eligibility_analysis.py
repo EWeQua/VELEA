@@ -80,7 +80,7 @@ def test_empty_suitable(base_area):
         restricted_areas=None,
         sliver_threshold=0,
     )
-    eligible_areas, restricted_areas = analysis.execute()
+    eligible_areas, restricted_areas = analysis.run()
     assert eligible_areas.empty
 
 
@@ -94,7 +94,7 @@ def test_sum_suitable(base_area, suitable_areas):
         restricted_areas=None,
         sliver_threshold=0,
     )
-    eligible_areas, restricted_areas = analysis.execute()
+    eligible_areas, restricted_areas = analysis.run()
     assert eligible_areas.area.sum() == 8
 
 
@@ -108,7 +108,7 @@ def test_empty_restricted(base_area, suitable_areas):
         restricted_areas=None,
         sliver_threshold=0,
     )
-    eligible_areas, restricted_areas = analysis.execute()
+    eligible_areas, restricted_areas = analysis.run()
     assert restricted_areas.area.sum() == 0
 
 
@@ -123,7 +123,7 @@ def test_empty_restricted_with_excluded(base_area, suitable_areas, unsuitable_ar
         restricted_areas=[],
         sliver_threshold=0,
     )
-    eligible_areas, restricted_areas = analysis.execute()
+    eligible_areas, restricted_areas = analysis.run()
     assert restricted_areas.area.sum() == 0
 
 
@@ -142,7 +142,7 @@ def test_sum_buffer_suitable(large_base_area, suitable_areas):
         restricted_areas=[],
         sliver_threshold=0,
     )
-    eligible_areas, restricted_areas = analysis.execute()
+    eligible_areas, restricted_areas = analysis.run()
     assert eligible_areas.area.sum() == 28
 
 
@@ -161,7 +161,7 @@ def test_clip_buffer_suitable(base_area, suitable_areas):
         restricted_areas=[],
         sliver_threshold=0,
     )
-    eligible_areas, restricted_areas = analysis.execute()
+    eligible_areas, restricted_areas = analysis.run()
     assert eligible_areas.area.sum() == 14
 
 
@@ -176,7 +176,7 @@ def test_sum(base_area, suitable_areas, unsuitable_areas):
         restricted_areas=[],
         sliver_threshold=0,
     )
-    eligible_areas, restricted_areas = analysis.execute()
+    eligible_areas, restricted_areas = analysis.run()
     assert eligible_areas.area.sum() == 6
 
 
@@ -196,7 +196,7 @@ def test_sum_difference_buffer(base_area, suitable_areas, unsuitable_areas):
         restricted_areas=[],
         sliver_threshold=0,
     )
-    eligible_areas, restricted_areas = analysis.execute()
+    eligible_areas, restricted_areas = analysis.run()
     assert eligible_areas.area.sum() == 0
 
 
@@ -216,7 +216,7 @@ def test_sum_difference_buffer_restricted(base_area, suitable_areas, unsuitable_
         restricted_areas=[restricted],
         sliver_threshold=0,
     )
-    eligible_areas, restricted_areas = analysis.execute()
+    eligible_areas, restricted_areas = analysis.run()
     assert eligible_areas.area.sum() == 0
     assert restricted_areas.area.sum() == 8
 
@@ -232,7 +232,7 @@ def test_linstring_overlap_is_empty(base_area, suitable_areas, restricted_areas)
         restricted_areas=[restricted],
         sliver_threshold=0,
     )
-    eligible_areas, restricted_areas = analysis.execute()
+    eligible_areas, restricted_areas = analysis.run()
     assert eligible_areas.area.sum() == 8
     assert restricted_areas.area.sum() == 0
     assert restricted_areas.empty
