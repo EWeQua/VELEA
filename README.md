@@ -27,6 +27,10 @@ TODO:
     conda activate velea
 
 ## Usage
+### Illustrative example
+For a self-contained simplified example (the illustrative example used in the paper) see [example.py](/velea/example.py).
+
+### Using VELEA with your own (real-world) data
 Define the base area of your analysis as a dict with a `source` key pointing to file that can be read using 
 [`geopandas.read_file`](https://geopandas.org/en/stable/docs/reference/api/geopandas.read_file.html) or directly using a 
 [`GeoDataFrame`](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.html):
