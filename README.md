@@ -1,11 +1,15 @@
-# VELEA
+# VELEA - Vector-based Land Eligibility Analysis for Renewable Energy Sources
 
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+VELEA is an open-source tool, capable of performing land eligibility analysis for renewable energy sources.
+The aim of VELEA is to simplify finding eligible areas, e.g., for constructing open-field PV or wind power plants, given
+a base area, areas to include as eligible, areas to include as eligible with restrictions and areas to exclude as 
+ineligible as vector-based geodata.
+Therefore, VELEA can be seen as the vector-based counterpart to [GLAES](https://github.com/FZJ-IEK3-VSA/glaes).
+As VELEA is based on [geopandas](https://github.com/geopandas/geopandas) it allows data input in any format supported by
+geopandas.
+Similar to GLAES input geodata can optionally be filtered and buffered before performing land eligibility analysis.
+VELEA allows data input according to the input specification of GLAES to simplify migration or experiments with both 
+tools.
 
 ## Installation
 
@@ -86,8 +90,6 @@ eligible_areas, eligible_areas_with_restrictions = EligibilityAnalysis(
     crs="EPSG:25832",
 ).run()
 ```
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
+## Acknowledgments
+This work was funded by the Bavarian State Ministry of Science and the Arts to promote applied research and development 
+at universities of applied sciences and technical universities.
