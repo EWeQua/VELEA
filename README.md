@@ -90,6 +90,30 @@ eligible_areas, eligible_areas_with_restrictions = EligibilityAnalysis(
     crs="EPSG:25832",
 ).run()
 ```
+### Using raster data
+Using raster data is not supported in VELEA natively. However, you can simply vectorize your raster data, e.g., using 
+[rasterio](https://github.com/rasterio/rasterio) and use the resulting vector-data. For example use or adapt the 
+following function from VELEA-eval that reads a raster file provided by its path and creates a `GeoDataFrame` from all 
+shapes where the value of the first band equals 100:
+```python
+import rasterio
+from geopandas import GeoDataFrame
+from rasterio.features import shapes
+
+def vectorize(path: str) -> GeoDataFrame:
+    # Inspired by https://gis.stackexchange.com/questions/187877/how-to-polygonize-raster-to-shapely-polygons
+    with rasterio.Env():
+        with rasterio.open(path) as src:
+            image = src.read(1)  # first band
+            geoms = [
+                {"properties": {"raster_val": v}, "geometry": s}
+                for _, (s, v) in enumerate(shapes(image, transform=src.transform))
+                # We're only interested in the eligible areas (v == 100) --> drop other values
+                if v == 100
+            ]
+    return GeoDataFrame.from_features(geoms, crs="EPSG:25832")
+```
+
 ## Acknowledgments
 This work was funded by the Bavarian State Ministry of Science and the Arts to promote applied research and development 
 at universities of applied sciences and technical universities.
