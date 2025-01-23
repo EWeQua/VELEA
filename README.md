@@ -20,9 +20,7 @@ obtained by installing the [Anaconda Distribution](https://www.anaconda.com/dist
 
 ### Installing with conda
 
-TODO:
-
-    conda install velea
+    conda install swifmaneum::velea
     
 ### Installing from source
 
